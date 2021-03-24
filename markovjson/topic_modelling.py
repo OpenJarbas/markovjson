@@ -1,4 +1,4 @@
-from markovjson import MarkovWordJson
+from markovjson import MarkovWordJson, MarkovNLPJson
 from os.path import basename
 
 
@@ -52,3 +52,6 @@ class MarkovTopic(MarkovWordJson):
                 topics[topic] = score
         return topics
 
+
+class MarkovNLPTopic(MarkovNLPJson, MarkovTopic):
+    """"""
