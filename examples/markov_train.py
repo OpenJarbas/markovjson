@@ -13,7 +13,6 @@ if isfile(path):
 else:
     with open(f"datasets/{model}.txt") as f:
         for line in f.readlines():
-            # TODO cleanup string ?
             if not line.strip():
                 continue
             mkov.add_string(line.strip())
