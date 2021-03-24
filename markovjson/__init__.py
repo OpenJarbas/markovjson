@@ -3,7 +3,7 @@ from json_database import JsonStorage
 from enum import Enum
 
 
-class MarkovChainConfType(str, Enum):
+class SequenceScoringStrategy(str, Enum):
     MAX = "max"
     MIN = "min"
     MULTIPLY = "multiply"
@@ -16,14 +16,15 @@ class MarkovChainConfType(str, Enum):
 
 
 class MarkovChainJson:
-    def __init__(self, order=1, conf_type=MarkovChainConfType.AVERAGED_MULTIPLY):
+    def __init__(self, order=1,
+                 strategy=SequenceScoringStrategy.AVERAGED_MULTIPLY):
         self.START_OF_SEQ = "[/START]"
         self.END_OF_SEQ = "[/END]"
         self.NULL_SEQ = "[/NULL]"
         self.WILDCARD_SEQ = "[/]"
         self.order = order
         self.records = {}
-        self.strategy = conf_type
+        self.strategy = strategy
         self._current_state = [self.START_OF_SEQ] * self.order
 
     # tokenization
@@ -78,7 +79,7 @@ class MarkovChainJson:
 
     # sequence handling
     def get_state(self, initial_state=None, pad=True):
-        sequence = self.get_sequence(initial_state, pad=pad)
+        sequence = self.predict_sequence(initial_state, pad=pad)
         return tuple(sequence[-self.order:])
 
     def sequence2states(self, sequence):
@@ -91,19 +92,6 @@ class MarkovChainJson:
                 break
             states.append(state)
         return states
-
-    def get_sequence(self, initial_state, pad=False):
-        if initial_state is None:
-            sequence = [self.START_OF_SEQ] * self.order
-        elif isinstance(initial_state, str):
-            sequence = self.tokenize(initial_state)
-        else:
-            sequence = initial_state[:]
-
-        if pad or len(sequence) < self.order:
-            sequence = [self.START_OF_SEQ] * self.order + sequence
-        sequence = [s for s in sequence if s]  # filter empty strings and such
-        return sequence
 
     def get_transition_weights(self, sequence):
         states = self.sequence2states(sequence)
@@ -125,41 +113,55 @@ class MarkovChainJson:
             avg_weights.append(w / t)
         return weights, avg_weights
 
-    def get_sequence_score(self, sequence, strategy):
+    def get_sequence_score(self, sequence,
+                           strategy=SequenceScoringStrategy.AVERAGED_MULTIPLY):
         weights, avg_weights = self.get_transition_weights(sequence)
 
-        if strategy == MarkovChainConfType.AVERAGE:
+        if strategy == SequenceScoringStrategy.AVERAGE:
             return sum(avg_weights) / len(avg_weights)
 
-        if strategy == MarkovChainConfType.MAX:
+        if strategy == SequenceScoringStrategy.MAX:
             return max(weights)
 
-        if strategy == MarkovChainConfType.AVERAGED_MAX:
+        if strategy == SequenceScoringStrategy.AVERAGED_MAX:
             return max(avg_weights)
 
-        if strategy == MarkovChainConfType.MIN:
+        if strategy == SequenceScoringStrategy.MIN:
             return min(weights)
 
-        if strategy == MarkovChainConfType.AVERAGED_MIN:
+        if strategy == SequenceScoringStrategy.AVERAGED_MIN:
             return min(avg_weights)
 
-        if strategy == MarkovChainConfType.TOTAL:
+        if strategy == SequenceScoringStrategy.TOTAL:
             return sum(weights)
 
-        if strategy == MarkovChainConfType.AVERAGED_TOTAL:
+        if strategy == SequenceScoringStrategy.AVERAGED_TOTAL:
             return sum(avg_weights)
 
-        if strategy == MarkovChainConfType.MULTIPLY:
+        if strategy == SequenceScoringStrategy.MULTIPLY:
             score = 1
             for c in weights:
                 score = score * c
             return score
 
-        if strategy == MarkovChainConfType.AVERAGED_MULTIPLY:
+        if strategy == SequenceScoringStrategy.AVERAGED_MULTIPLY:
             score = 1
             for c in avg_weights:
                 score = score * c
             return score
+
+    def predict_sequence(self, initial_state, pad=False):
+        if initial_state is None:
+            sequence = [self.START_OF_SEQ] * self.order
+        elif isinstance(initial_state, str):
+            sequence = self.tokenize(initial_state)
+        else:
+            sequence = initial_state[:]
+
+        if pad or len(sequence) < self.order:
+            sequence = [self.START_OF_SEQ] * self.order + sequence
+        sequence = [s for s in sequence if s]  # filter empty strings and such
+        return sequence
 
     def iterate_sequences(self, initial_state=None, max_len=10, pad=False,
                           strategy=None, max_depth=25, thresh=0.1):
@@ -167,7 +169,7 @@ class MarkovChainJson:
         #  path starts being ignored
         strategy = strategy or self.strategy
         current_state = self.get_state(initial_state, pad)
-        sequence = self.get_sequence(initial_state, pad)
+        sequence = self.predict_sequence(initial_state, pad)
 
         if current_state not in self.records:
             return
@@ -223,7 +225,7 @@ class MarkovChainJson:
                 return k
 
     def generate_sequence(self, max_len=100, initial_state=None, pad=False):
-        sequence = self.get_sequence(initial_state, pad=pad)
+        sequence = self.predict_sequence(initial_state, pad=pad)
         for i in range(max_len):
             current_state = tuple(sequence[-self.order:])
             next_token = self.sample(current_state)
@@ -280,7 +282,7 @@ class MarkovChainJson:
             # sample sequences containing the token
             for p in self.iterate_sequences(
                     thresh=0.01,
-                    strategy=MarkovChainConfType.AVERAGED_MULTIPLY,
+                    strategy=SequenceScoringStrategy.AVERAGED_MULTIPLY,
                     initial_state=state, *args,  **kwargs):
                 sequences.append(p)
                 if len(sequences) >= max_seqs / 2:
@@ -289,7 +291,7 @@ class MarkovChainJson:
             # sample sequences randomly
             for p in self.iterate_sequences(
                     thresh=0.01,
-                    strategy=MarkovChainConfType.AVERAGED_MULTIPLY,
+                    strategy=SequenceScoringStrategy.AVERAGED_MULTIPLY,
                     *args, **kwargs):
                 sequences.append(p)
                 if len(sequences) >= max_seqs:

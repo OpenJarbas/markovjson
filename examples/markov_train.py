@@ -4,7 +4,7 @@ from os.path import isfile
 # for names modelling at char level makes sense
 # word level could make more sense for things like song lyrics
 mkov = MarkovCharJson(order=4)
-model = "places"  # or "names"
+model = "names"  # or "places"
 path = f"{model}_c{mkov.order}.mkovjson"
 
 
