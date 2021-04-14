@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='markovjson',
-    version='0.1a1',
+    version='0.1.0',
     packages=['markovjson'],
     url='',
     license='apache-2',
