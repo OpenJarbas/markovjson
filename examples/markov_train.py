@@ -18,3 +18,6 @@ else:
             mkov.add_string(line.strip())
 
     mkov.save(path)
+
+seq = mkov.generate_string(initial_state="Ma")
+print(seq)

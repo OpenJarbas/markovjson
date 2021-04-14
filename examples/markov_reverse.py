@@ -1,6 +1,6 @@
-from markovjson import ReverseMarkovCharJson
+from markovjson import MarkovCharJson
 
-mkov = ReverseMarkovCharJson(order=4)
+mkov = MarkovCharJson(order=3, reverse=True)
 model = "places"  # or "names"
 with open(f"datasets/{model}.txt") as f:
     for line in f.readlines():
@@ -10,8 +10,9 @@ with open(f"datasets/{model}.txt") as f:
 
 # instead of iterating from the start, we iterate from the end
 # we can check for names ending a certain way instead of starting
-seq = mkov.generate_sequence(final_state="own")
+seq = mkov.generate_string(initial_state="i")
 print(seq)
+
 
 mkov.get_state("own")  # notice padding token
 # ('[/END]', 'n', 'w', 'o')

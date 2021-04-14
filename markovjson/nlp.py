@@ -10,8 +10,7 @@ def normalize(X, stemmer=None, lemmatize=True):
     if isinstance(X, str):
         X = [X]
     documents = []
-    if stemmer is None:
-        stemmer = nltk.stem.WordNetLemmatizer()
+
     if isinstance(stemmer, str):
         if "porter" in stemmer.lower():
             stemmer = nltk.PorterStemmer()
